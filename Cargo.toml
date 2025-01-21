@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-serde = {version= "1.0.217", features=["blocking", "json"]}
-reqwest = {version = "1.0", features = ["derivative"]}
 serde_json = "1.0"
 colored = "2.0"
+dotenv = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+reqwest = { version = "0.12.12", features = ["blocking", "json"] }

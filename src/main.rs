@@ -1,4 +1,6 @@
-use std::io::{self, stdin};
+use dotenv::dotenv;
+use std::env;
+use std::io;
 use serde::Deserialize;
 use colored::*;
 
@@ -33,29 +35,30 @@ struct Wind{
 }
 
 // Function to get the weather info from OpenWeatherMap API
-fn get_weather_info(city : &str, country_code : &str, api_key : &str)-> Result<WeatherResponse, reqwest::Error>{
-    let url: String = format!(
-        "http://api.openweathermap.org/geo/1.0/direct?q={},{}&appid={}",
+fn get_weather_info(city: &str, country_code: &str, api_key: &str) -> Result<WeatherResponse, reqwest::Error> {
+    let url = format!(
+        "http://api.openweathermap.org/data/2.5/weather?q={},{}&appid={}&units=metric",
         city,
         country_code,
         api_key
     );
 
     let response = reqwest::blocking::get(&url)?;
-
-    let response_json : WeatherResponse = response.json::<WeatherResponse>();
-    Ok(response_json);
+    let response_json: WeatherResponse = response.json()?;
+    Ok(response_json)
 }
+
+
 
 
 // Function to display the weather info
 fn display_weather_info(response: &WeatherResponse){
     // Extract the weather info from the response
     let description = &response.weather[0].description;
-    let temperature = &response.main.temp;
-    let pressure = &response.main.pressure;
-    let humidity = &response.main.humidity;
-    let wind_speed = &response.wind.speed;
+    let temperature = response.main.temp;
+    let pressure = response.main.pressure;
+    let humidity = response.main.humidity;
+    let wind_speed = response.wind.speed;
 
     let weather_text = format!(
         "Weather in {} : {} {}
@@ -73,13 +76,16 @@ fn display_weather_info(response: &WeatherResponse){
     );
 
     // Coloring the weather text based on weather conditions
-    let weather_text_color : coloredString = match description.as_str(){
+    let weather_text_colored : ColoredString = match description.as_str(){
         "clear sky" => weather_text.bright_yellow(),
         "few clouds" | "scattered clouds" | "broken clouds" => weather_text.bright_blue(),
         "overcast clouds" | "mist" | "haze" | "smoke" | "sand" | "dust" | "fog" => weather_text.dimmed(),
         "shower rain" | "rain" | "thunderstorm" | "snow" => weather_text.bright_cyan(),
         _ => weather_text.normal()
     };
+
+    // Print the colored weather info
+    println!("{}", weather_text_colored);
 
     // Function to get emoji based on temp
     fn get_temp_emoji(temp : f64)-> &'static str{
@@ -103,6 +109,9 @@ fn display_weather_info(response: &WeatherResponse){
 }
 
 fn main(){
+    // Loading env variables
+    dotenv().ok();
+
     println!("{}","Welcome to Weather Station!".bright_yellow());
 
     loop{
@@ -122,5 +131,31 @@ fn main(){
         io::stdin().read_line(&mut country_code).expect("Failed to read input!");
         let country_code = country_code.trim();
 
+        let api_key = env::var("API_KEY").expect("API_KEY not found in .env");
+        println!("API Key: {}", api_key);
+
+        // Calling the function to fetch weather info
+        match get_weather_info(&city, &country_code, &api_key){
+            Ok(response)=>{
+                display_weather_info(&response);
+            }
+            Err(err)=>{
+                eprintln!("Error occured: {err}");
+            }
+        }   
+        
+        // Prompting user to continue or exit
+        println!("{}", "Do you want to search for weather in another city? (yes/no) :".bright_green());
+        let mut input = String::new();
+        // Reading input for continuation
+        io::stdin().read_line(&mut input).expect("Failed to read input");
+        let input = input.trim().to_lowercase();
+
+        if input!= "yes"{
+            println!("Thank you for using our software!");
+            break;  //Exiting the loop if the user doesn't want to continue
+        }
     }
+
+
 }
